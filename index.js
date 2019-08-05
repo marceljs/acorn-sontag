@@ -69,21 +69,18 @@ class SontagParser extends Parser {
 function parseExpression(str, opts) {
 	if (!str) return str;
 
-	// Throw on unsupported operators
-	let bummer = str.match(unsupported_re);
-	if (bummer) {
-		throw new Error(`These operators are not yet supported: ${ bummer.join(', ') }`)
-	}
-
-	// Replace Sontag operators with equivalent ECMAScript operators
-	str = str.replace(operators_re, matched => operators[matched]);
-
 	opts = {
 		rangeFunction: 'this.__filters__.range',
 		identifierScope: 'this',
 		filterScope: 'this.__filters__',
 		...opts
 	};
+
+	// Throw on unsupported operators
+	let bummer = str.match(unsupported_re);
+	if (bummer) {
+		throw new Error(`These operators are not yet supported: ${ bummer.join(', ') }`)
+	}
 
 	// Replace | with filter operator and .. with range operator
 	str = str
@@ -93,6 +90,9 @@ function parseExpression(str, opts) {
 		.replace(/[^.]\.{2}(?!\.)/g, function(str, match) {
 			return str[0] + '◊r';
 		});
+
+	// Replace Sontag operators with equivalent ECMAScript operators
+	str = str.replace(operators_re, matched => operators[matched]);
 
 	let parser = new SontagParser({
 		allowReserved: true

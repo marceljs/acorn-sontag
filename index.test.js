@@ -1,3 +1,3 @@
 let { expression } = require('./index');
 
-console.log(expression('posts[posts.length - 1] | escape'));
+console.log(expression('1 b-or 2'));
