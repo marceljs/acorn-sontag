@@ -8,7 +8,9 @@ const codes = {
 	lozenge: '◊'.charCodeAt(0),
 	f: 'f'.charCodeAt(0),
 	r: 'r'.charCodeAt(0),
-	t: 't'.charCodeAt(0)
+	t: 't'.charCodeAt(0),
+	s: 's'.charCodeAt(0),
+	e: 'e'.charCodeAt(0)
 }
 
 const operators = {
@@ -23,8 +25,6 @@ const operators = {
 const unsupported_operators = [
 	'\\?\\:', // ?:
 	'\\?\\?', // ??
-	' starts with ', 
-	' ends with ', 
 	' matches ', 
 	' in ', 
 	' is ', 
@@ -55,6 +55,16 @@ class SontagParser extends Parser {
 			beforeExpr: true, 
 			binop: 0.97
 		});
+
+		tokTypes.sontag_startswith = new TokenType(`◊s`, {
+			beforeExpr: true, 
+			binop: 0.999
+		});
+
+		tokTypes.sontag_endswith = new TokenType(`◊e`, {
+			beforeExpr: true, 
+			binop: 0.999
+		});
 	}
 
 	readToken(code) {
@@ -66,6 +76,10 @@ class SontagParser extends Parser {
 				return this.finishOp(tokTypes.sontag_range, 2);
 			} else if (next === codes.t) {
 				return this.finishOp(tokTypes.sontag_trunc, 2);
+			} else if (next === codes.s) {
+				return this.finishOp(tokTypes.sontag_startswith, 2);
+			} else if (next === codes.e) {
+				return this.finishOp(tokTypes.sontag_endswith, 2);
 			}
 		} else {
 			return super.readToken(code);
@@ -79,6 +93,8 @@ function parseExpression(str, opts) {
 	opts = {
 		rangeFunction: 'this.__filters__.range',
 		truncFunction: 'Math.floor',
+		startsWithFunction: '"".startsWith.call',
+		endsWithFunction: '"".endsWith.call',
 		identifierScope: 'this',
 		filterScope: 'this.__filters__',
 		...opts
@@ -100,6 +116,12 @@ function parseExpression(str, opts) {
 		})
 		.replace(/\/{2}/g, function(str, match) {
 			return '◊t';
+		})
+		.replace(/ starts with /g, function(str, match) {
+			return '◊s';
+		})
+		.replace(/ ends with /g, function(str, match) {
+			return '◊e';
 		});
 
 	// Replace Sontag operators with equivalent ECMAScript operators
@@ -153,7 +175,6 @@ function parseExpression(str, opts) {
 					arguments: [ left, right ]
 				});
 			} else if (node.operator === '◊t') {
-				let { left, right } = node;
 				replacements.set(node, {
 					type: 'CallExpression',
 					callee: {
@@ -164,7 +185,25 @@ function parseExpression(str, opts) {
 						...node,
 						operator: '/' 
 					}]
-				})
+				});
+			} else if (node.operator === '◊s') {
+				replacements.set(node, {
+					type: 'CallExpression',
+					callee: {
+						type: 'Identifier',
+						name: opts.startsWithFunction
+					},
+					arguments: [node.left, node.right]
+				});
+			} else if (node.operator === '◊e') {
+				replacements.set(node, {
+					type: 'CallExpression',
+					callee: {
+						type: 'Identifier',
+						name: opts.endsWithFunction
+					},
+					arguments: [node.left, node.right ]
+				});
 			}
 		}
 	});
