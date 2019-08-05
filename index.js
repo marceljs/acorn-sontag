@@ -98,20 +98,15 @@ function parseExpression(str, opts) {
 		allowReserved: true
 	}, str);
 	parser.nextToken();
+	
 	let ast = parser.parseExpression();
 
-		const replacements = new Map();
+	const replacements = new Map();
 
 	ancestor(ast, {
 
 		Identifier(node, ancestors) {
-			let parent = ancestors[0];
-			replacements.set(node, {
-				...node,
-				name: parent && parent.operator === '◊f' && parent.right === node ? 
-					`${opts.filterScope}.${node.name}` :
-					`${opts.identifierScope}.${node.name}`
-			})
+			node.__replace_name__ = true;
 		},
 
 		BinaryExpression(node) {
@@ -121,13 +116,15 @@ function parseExpression(str, opts) {
 				if (right.type === 'CallExpression') {
 					// We have a function on the right-hand side,
 					// add left-hand side to the list of arguments
+					right.callee.__is_filter__ = true;
 					replacements.set(node, {
-						...node.right,
-						arguments: node.right.arguments.concat(left)
+						...right,
+						arguments: right.arguments.concat(left)
 					});
 				} else if (right.type === 'Identifier') {
 					// We have an identifier on the right-hand side,
 					// make it a function that calls the left-hand side
+					right.__is_filter__ = true;
 					replacements.set(node, {
 						type: 'CallExpression',
 						callee: right,
@@ -148,11 +145,20 @@ function parseExpression(str, opts) {
 		}
 	});
 
+	console.log(JSON.stringify(ast, null, 2));
+
 	return generate(
 		replace(ast, {
 			enter(node) {
 				if (replacements.has(node)) {
 					return replacements.get(node);
+				} else if (node.__replace_name__) {
+					return {
+						...node,
+						name: node.__is_filter__ ? 
+							`${opts.filterScope}.${node.name}` :
+							`${opts.identifierScope}.${node.name}`
+					};
 				}
 			}
 		})
