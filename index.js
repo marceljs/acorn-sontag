@@ -144,9 +144,7 @@ function parseExpression(str, opts) {
 			}
 		}
 	});
-
-	console.log(JSON.stringify(ast, null, 2));
-
+	
 	return generate(
 		replace(ast, {
 			enter(node) {
