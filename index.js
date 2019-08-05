@@ -7,7 +7,8 @@ const util = require('util');
 const codes = {
 	lozenge: '◊'.charCodeAt(0),
 	f: 'f'.charCodeAt(0),
-	r: 'r'.charCodeAt(0)
+	r: 'r'.charCodeAt(0),
+	t: 't'.charCodeAt(0)
 }
 
 const operators = {
@@ -20,7 +21,6 @@ const operators = {
 };
 
 const unsupported_operators = [
-	'\\/\\/',  // //
 	'\\?\\:', // ?:
 	'\\?\\?', // ??
 	' starts with ', 
@@ -50,6 +50,11 @@ class SontagParser extends Parser {
 			beforeExpr: true, 
 			binop: 0.98
 		});
+
+		tokTypes.sontag_trunc = new TokenType(`◊t`, {
+			beforeExpr: true, 
+			binop: 0.97
+		});
 	}
 
 	readToken(code) {
@@ -59,6 +64,8 @@ class SontagParser extends Parser {
 				return this.finishOp(tokTypes.sontag_filter, 2);
 			} else if (next === codes.r) {
 				return this.finishOp(tokTypes.sontag_range, 2);
+			} else if (next === codes.t) {
+				return this.finishOp(tokTypes.sontag_trunc, 2);
 			}
 		} else {
 			return super.readToken(code);
@@ -71,6 +78,7 @@ function parseExpression(str, opts) {
 
 	opts = {
 		rangeFunction: 'this.__filters__.range',
+		truncFunction: 'Math.floor',
 		identifierScope: 'this',
 		filterScope: 'this.__filters__',
 		...opts
@@ -89,6 +97,9 @@ function parseExpression(str, opts) {
 		})
 		.replace(/[^.]\.{2}(?!\.)/g, function(str, match) {
 			return str[0] + '◊r';
+		})
+		.replace(/\/{2}/g, function(str, match) {
+			return '◊t';
 		});
 
 	// Replace Sontag operators with equivalent ECMAScript operators
@@ -141,10 +152,23 @@ function parseExpression(str, opts) {
 					},
 					arguments: [ left, right ]
 				});
+			} else if (node.operator === '◊t') {
+				let { left, right } = node;
+				replacements.set(node, {
+					type: 'CallExpression',
+					callee: {
+						type: 'Identifier',
+						name: opts.truncFunction
+					},
+					arguments: [{
+						...node,
+						operator: '/' 
+					}]
+				})
 			}
 		}
 	});
-	
+
 	return generate(
 		replace(ast, {
 			enter(node) {
