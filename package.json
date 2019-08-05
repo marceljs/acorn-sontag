@@ -1,9 +1,9 @@
 {
-  "name": "acorn-plugin-sontag",
+  "name": "acorn-sontag",
   "version": "0.0.1",
   "description": "Acorn plugin to parse Sontag expressions",
   "main": "index.js",
-  "repository": "git@github.com:marceljs/acorn-plugin-sontag.git",
+  "repository": "git@github.com:marceljs/acorn-sontag.git",
   "author": "Dan Burzo <dan@danburzo.ro>",
   "license": "MIT",
   "scripts": {
