@@ -6,16 +6,19 @@ const util = require('util');
 
 const codes = {
 	lozenge: '◊'.charCodeAt(0),
+	e: 'e'.charCodeAt(0),
 	f: 'f'.charCodeAt(0),
+	i: 'i'.charCodeAt(0),
+	m: 'm'.charCodeAt(0),
 	r: 'r'.charCodeAt(0),
-	t: 't'.charCodeAt(0),
 	s: 's'.charCodeAt(0),
-	e: 'e'.charCodeAt(0)
+	t: 't'.charCodeAt(0)
 }
 
 const operators = {
 	' and ': '&&',
 	' or ': '||',
+	' not ': '!',
 	' b-or ': '|',
 	' b-and ': '&',
 	' b-xor ': '^',
@@ -24,11 +27,8 @@ const operators = {
 
 const unsupported_operators = [
 	'\\?\\:', // ?:
-	'\\?\\?', // ??
-	' matches ', 
-	' in ', 
-	' is ', 
-	' not '
+	'\\?\\?', // ?? 
+	' is '
 ];
 
 const operators_re = new RegExp(Object.keys(operators).join('|'), 'g');
@@ -65,6 +65,16 @@ class SontagParser extends Parser {
 			beforeExpr: true, 
 			binop: 0.999
 		});
+
+		tokTypes.sontag_matches = new TokenType(`◊m`, {
+			beforeExpr: true, 
+			binop: 0.999
+		});
+
+		tokTypes.sontag_in = new TokenType(`◊i`, {
+			beforeExpr: true, 
+			binop: 0.999
+		})
 	}
 
 	readToken(code) {
@@ -80,6 +90,10 @@ class SontagParser extends Parser {
 				return this.finishOp(tokTypes.sontag_startswith, 2);
 			} else if (next === codes.e) {
 				return this.finishOp(tokTypes.sontag_endswith, 2);
+			} else if (next === codes.m) {
+				return this.finishOp(tokTypes.sontag_matches, 2);
+			} else if (next === codes.i) {
+				return this.finishOp(tokTypes.sontag_in, 2);
 			}
 		} else {
 			return super.readToken(code);
@@ -95,6 +109,7 @@ function parseExpression(str, opts) {
 		truncFunction: 'Math.floor',
 		startsWithFunction: '"".startsWith.call',
 		endsWithFunction: '"".endsWith.call',
+		matchesFunction: '!!"".match.call',
 		identifierScope: 'this',
 		filterScope: 'this.__filters__',
 		...opts
@@ -122,6 +137,12 @@ function parseExpression(str, opts) {
 		})
 		.replace(/ ends with /g, function(str, match) {
 			return '◊e';
+		})
+		.replace(/ matches /g, function(str, match) {
+			return '◊m';
+		})
+		.replace(/ in /g, function(str, match) {
+			return '◊i';
 		});
 
 	// Replace Sontag operators with equivalent ECMAScript operators
@@ -203,6 +224,29 @@ function parseExpression(str, opts) {
 						name: opts.endsWithFunction
 					},
 					arguments: [node.left, node.right ]
+				});
+			} else if (node.operator === '◊m') {
+				replacements.set(node, {
+					type: 'CallExpression',
+					callee: {
+						type: 'Identifier',
+						name: opts.matchesFunction
+					},
+					arguments: [node.left, node.right ]
+				});
+			} else if (node.operator === '◊i') {
+				replacements.set(node, {
+					type: 'CallExpression',
+					callee: {
+						type: 'MemberExpression',
+						object: node.right,
+						property: { 
+							type: 'Identifier', 
+							name: 'includes' 
+						},
+						computed: false
+					},
+					arguments: [node.left]
 				});
 			}
 		}
