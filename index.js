@@ -43,38 +43,38 @@ class SontagParser extends Parser {
 
 		tokTypes.sontag_filter = new TokenType(`◊f`, {
 			beforeExpr: true, 
-			binop: 0.99
+			binop: 0.2
 		});
 
 		tokTypes.sontag_range = new TokenType(`◊r`, {
 			beforeExpr: true, 
-			binop: 0.98
+			binop: 8.6
 		});
 
 		tokTypes.sontag_trunc = new TokenType(`◊t`, {
 			beforeExpr: true, 
-			binop: 0.97
+			binop: 10
 		});
 
 		tokTypes.sontag_startswith = new TokenType(`◊s`, {
 			beforeExpr: true, 
-			binop: 0.999
+			binop: 8.5
 		});
 
 		tokTypes.sontag_endswith = new TokenType(`◊e`, {
 			beforeExpr: true, 
-			binop: 0.999
+			binop: 8.5
 		});
 
 		tokTypes.sontag_matches = new TokenType(`◊m`, {
 			beforeExpr: true, 
-			binop: 0.999
+			binop: 8.5
 		});
 
 		tokTypes.sontag_in = new TokenType(`◊i`, {
 			beforeExpr: true, 
-			binop: 0.999
-		})
+			binop: 8.4
+		});
 	}
 
 	readToken(code) {
