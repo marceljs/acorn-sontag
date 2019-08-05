@@ -1,6 +1,6 @@
 {
   "name": "acorn-sontag",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Acorn plugin to parse Sontag expressions",
   "main": "index.js",
   "repository": "git@github.com:marceljs/acorn-sontag.git",
