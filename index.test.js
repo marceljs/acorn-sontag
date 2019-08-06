@@ -25,7 +25,6 @@ tape('operator: starts with', t => {
 	t.end();
 });
 
-
 tape('operator: ends with', t => {
 	t.equal(
 		expression('str ends with "hello"'),
@@ -46,7 +45,7 @@ tape('operator: range', t => {
 });
 
 tape('operator: truncate', t => {
-	t.equal(expression('a // 5'), 'Math.floor(this.a / 5)');
+	t.equal(expression('a // 5'), 'Math.trunc(this.a / 5)');
 	t.end();
 });
 
@@ -54,6 +53,19 @@ tape('operator: filter', t => {
 	t.equal(
 		expression('posts[posts.length - 1] | escape'), 
 		'this.__filters__.escape(this.posts[this.posts.length - 1])'
+	);
+	t.end();
+});
+
+tape('operator: filter (async)', t => {
+	t.equal(
+		expression('posts[posts.length - 1] | escape', { async: true }), 
+		'await this.__filters__.escape(this.posts[this.posts.length - 1])'
+	);
+
+	t.equal(
+		expression('posts | batch(3) | tostring', { async: true }), 
+		'await this.__filters__.tostring(await this.__filters__.batch(3, this.posts))'
 	);
 	t.end();
 });

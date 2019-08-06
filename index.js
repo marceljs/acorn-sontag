@@ -101,12 +101,20 @@ class SontagParser extends Parser {
 	}
 }
 
+function wrapAwait(node) {
+	return {
+		type: "AwaitExpression",
+		argument: node
+	};
+}
+
 function parseExpression(str, opts) {
 	if (!str) return str;
 
 	opts = {
+		async: false,
 		rangeFunction: 'this.__filters__.range',
-		truncFunction: 'Math.floor',
+		truncFunction: 'Math.trunc',
 		startsWithFunction: '"".startsWith.call',
 		endsWithFunction: '"".endsWith.call',
 		matchesFunction: '!!"".match.call',
@@ -171,19 +179,21 @@ function parseExpression(str, opts) {
 					// We have a function on the right-hand side,
 					// add left-hand side to the list of arguments
 					right.callee.__is_filter__ = true;
-					replacements.set(node, {
+					let replacement = {
 						...right,
 						arguments: right.arguments.concat(left)
-					});
+					};
+					replacements.set(node, opts.async ? wrapAwait(replacement) : replacement);
 				} else if (right.type === 'Identifier') {
 					// We have an identifier on the right-hand side,
 					// make it a function that calls the left-hand side
 					right.__is_filter__ = true;
-					replacements.set(node, {
+					let replacement = {
 						type: 'CallExpression',
 						callee: right,
 						arguments: [ left ]
-					});
+					};
+					replacements.set(node, opts.async ? wrapAwait(replacement) : replacement);
 				}
 			} else if (node.operator === '◊r') {
 				let { left, right } = node;
