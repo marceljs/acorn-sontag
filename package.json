@@ -1,6 +1,6 @@
 {
   "name": "acorn-sontag",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Acorn plugin to parse Sontag expressions",
   "type": "module",
   "main": "index.js",
