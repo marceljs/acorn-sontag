@@ -1,8 +1,7 @@
-const { Parser, tokTypes, TokenType } = require('acorn');
-const { ancestor } = require('acorn-walk');
-const { replace } = require('estraverse');
-const { generate } = require('astring');
-const util = require('util');
+import { Parser, tokTypes, TokenType } from 'acorn';
+import { ancestor } from 'acorn-walk';
+import { replace } from 'estraverse';
+import { generate } from 'astring';
 
 const codes = {
 	lozenge: '◊'.charCodeAt(0),
@@ -108,7 +107,7 @@ function wrapAwait(node) {
 	};
 }
 
-function parseExpression(str, opts) {
+export function parseExpression(str, opts) {
 	if (!str) return str;
 
 	opts = {
@@ -279,7 +278,3 @@ function parseExpression(str, opts) {
 		})
 	);
 }
-
-module.exports = {
-	expression: parseExpression
-};
