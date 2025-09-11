@@ -5,17 +5,13 @@ An Acorn-based parser for [Sontag](https://github.com/marceljs/sontag) expressio
 ## Installation
 
 ```bash
-# using npm
 npm install acorn-sontag
-
-# using yarn
-yarn add acorn-sontag
 ```
 
 ## Usage
 
 ```js
-let { expression } = require('acorn-sontag');
+import { parseExpression } from 'acorn-sontag';
 
 let result = expression('posts[posts.length - 1] | escape', {
 	// The scope to add to filters
