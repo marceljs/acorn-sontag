@@ -4,14 +4,14 @@ import { replace } from 'estraverse';
 import { generate } from 'astring';
 
 const codes = {
-	lozenge: '◊'.charCodeAt(0),
-	e: 'e'.charCodeAt(0),
-	f: 'f'.charCodeAt(0),
-	i: 'i'.charCodeAt(0),
-	m: 'm'.charCodeAt(0),
-	r: 'r'.charCodeAt(0),
-	s: 's'.charCodeAt(0),
-	t: 't'.charCodeAt(0)
+	lozenge: 0x25CA, // ◊
+	e: 0x65,
+	f: 0x66,
+	i: 0x69,
+	m: 0x6D,
+	r: 0x72,
+	s: 0x73,
+	t: 0x74
 }
 
 const operators = {
