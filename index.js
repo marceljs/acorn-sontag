@@ -37,8 +37,11 @@ class SontagParser extends Parser {
 	constructor(...args) {
 		super(...args);
 		
-		// Allow reserved keywords as identifiers
-		this.keywords = /[^\s\S]/g;
+		/* 
+			Allow most reserved keywords as identifiers,
+			but keep some of them (literals, etc).
+		*/
+		this.keywords = /^(?:void|this|null|true|false)$/;
 
 		tokTypes.sontag_filter = new TokenType(`◊f`, {
 			beforeExpr: true, 
@@ -156,7 +159,8 @@ export function parseExpression(str, opts) {
 	str = str.replace(operators_re, matched => operators[matched]);
 
 	let parser = new SontagParser({
-		allowReserved: true
+		allowReserved: true,
+		ecmaVersion: 2020
 	}, str);
 	parser.nextToken();
 	

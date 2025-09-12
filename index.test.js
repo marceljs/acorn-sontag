@@ -62,3 +62,41 @@ test('operator: filter (async)', t => {
 		'await this.__filters__.tostring(await this.__filters__.batch(3, this.posts))'
 	);
 });
+
+test('simple expressions', t => {
+	assert.equal(
+		parseExpression('true', { async: true }),
+		'true'
+	);
+
+	assert.equal(
+		parseExpression('false', { async: true }),
+		'false'
+	);
+
+
+	assert.equal(
+		parseExpression('1', { async: true }),
+		'1'
+	);
+
+	assert.equal(
+		parseExpression('"str"', { async: true }),
+		'"str"'
+	);
+
+	assert.equal(
+		parseExpression('[]', { async: true }),
+		'[]'
+	);
+
+	assert.equal(
+		parseExpression('{}', { async: true }),
+		'{}'
+	);
+
+	assert.equal(
+		parseExpression('this', { async: true }),
+		'this'
+	);
+});
