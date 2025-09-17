@@ -14,6 +14,16 @@ const codes = {
 	t: 0x74
 }
 
+const putback = {
+	'◊e': " ends with ",
+	'◊f': "|",
+	'◊i': " in ",
+	'◊m': " matches ",
+	'◊r': "..",
+	'◊s': " starts with ",
+	'◊t': "//"
+};
+
 const operators = {
 	' and ': '&&',
 	' or ': '||',
@@ -32,6 +42,7 @@ const unsupported_operators = [
 
 const operators_re = new RegExp(Object.keys(operators).join('|'), 'g');
 const unsupported_re = new RegExp(unsupported_operators.join('|'), 'g');
+const putback_re = new RegExp(Object.keys(putback).join('|'), 'g');
 
 class SontagParser extends Parser {
 	constructor(...args) {
@@ -172,6 +183,20 @@ export function parseExpression(str, opts) {
 
 		Identifier(node, ancestors) {
 			node.__replace_name__ = true;
+		},
+
+		TemplateElement(node) {
+			// TODO should we treat the two differently?
+			node.value.raw = node.value.raw.replace(putback_re, matched => putback[matched]);
+			node.value.cooked = node.value.cooked.replace(putback_re, matched => putback[matched]);
+		},
+
+		Literal(node) {
+			if (typeof node.value === 'string') {
+				// TODO should we treat the two differently?
+				node.value = node.value.replace(putback_re, matched => putback[matched]);
+				node.raw = node.raw.replace(putback_re, matched => putback[matched]);
+			}
 		},
 
 		BinaryExpression(node) {

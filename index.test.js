@@ -63,25 +63,47 @@ test('operator: filter (async)', t => {
 	);
 });
 
+test('string context', () => {
+	assert.equal(
+		parseExpression('"posts| escape"'),
+		'"posts| escape"'
+	);
+
+	assert.equal(
+		parseExpression("'\\'2 // 3 | isOdd'"),
+		"'\\'2 // 3 | isOdd'"
+	);
+
+	assert.equal(
+		parseExpression("posts[`Therefore..I dunno ${post|inverse}`] | length"),
+		"this.__filters__.length(this.posts[`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
+	);
+
+	assert.equal(
+		parseExpression("posts[html`Therefore..I dunno ${post|inverse}`] | length"),
+		"this.__filters__.length(this.posts[this.html`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
+	);
+});
+
 test('simple expressions', t => {
 	assert.equal(
-		parseExpression('true', { async: true }),
+		parseExpression('true'),
 		'true'
 	);
 
 	assert.equal(
-		parseExpression('false', { async: true }),
+		parseExpression('false'),
 		'false'
 	);
 
 
 	assert.equal(
-		parseExpression('1', { async: true }),
+		parseExpression('1'),
 		'1'
 	);
 
 	assert.equal(
-		parseExpression('"str"', { async: true }),
+		parseExpression('"str"'),
 		'"str"'
 	);
 
