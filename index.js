@@ -5,22 +5,16 @@ import { generate } from 'astring';
 
 const codes = {
 	lozenge: 0x25CA, // ◊
-	e: 0x65,
 	f: 0x66,
 	i: 0x69,
-	m: 0x6D,
 	r: 0x72,
-	s: 0x73,
 	t: 0x74
 }
 
 const putback = {
-	'◊e': " ends with ",
 	'◊f': "|",
 	'◊i': " in ",
-	'◊m': " matches ",
 	'◊r': "..",
-	'◊s': " starts with ",
 	'◊t': "//"
 };
 
@@ -59,6 +53,11 @@ class SontagParser extends Parser {
 			binop: 0.2
 		});
 
+		tokTypes.sontag_in = new TokenType(`◊i`, {
+			beforeExpr: true, 
+			binop: 8.4
+		});
+
 		tokTypes.sontag_range = new TokenType(`◊r`, {
 			beforeExpr: true, 
 			binop: 8.6
@@ -67,26 +66,6 @@ class SontagParser extends Parser {
 		tokTypes.sontag_trunc = new TokenType(`◊t`, {
 			beforeExpr: true, 
 			binop: 10
-		});
-
-		tokTypes.sontag_startswith = new TokenType(`◊s`, {
-			beforeExpr: true, 
-			binop: 8.5
-		});
-
-		tokTypes.sontag_endswith = new TokenType(`◊e`, {
-			beforeExpr: true, 
-			binop: 8.5
-		});
-
-		tokTypes.sontag_matches = new TokenType(`◊m`, {
-			beforeExpr: true, 
-			binop: 8.5
-		});
-
-		tokTypes.sontag_in = new TokenType(`◊i`, {
-			beforeExpr: true, 
-			binop: 8.4
 		});
 	}
 
@@ -99,12 +78,6 @@ class SontagParser extends Parser {
 				return this.finishOp(tokTypes.sontag_range, 2);
 			} else if (next === codes.t) {
 				return this.finishOp(tokTypes.sontag_trunc, 2);
-			} else if (next === codes.s) {
-				return this.finishOp(tokTypes.sontag_startswith, 2);
-			} else if (next === codes.e) {
-				return this.finishOp(tokTypes.sontag_endswith, 2);
-			} else if (next === codes.m) {
-				return this.finishOp(tokTypes.sontag_matches, 2);
 			} else if (next === codes.i) {
 				return this.finishOp(tokTypes.sontag_in, 2);
 			}
@@ -127,11 +100,8 @@ export function parseExpression(str, opts) {
 	opts = {
 		async: false,
 		rangeFunction: 'this.__filters__.range',
-		truncFunction: 'Math.trunc',
-		startsWithFunction: '"".startsWith.call',
-		endsWithFunction: '"".endsWith.call',
-		matchesFunction: '!!"".match.call',
 		identifierScope: 'this',
+		truncFunction: 'Math.trunc',
 		filterScope: 'this.__filters__',
 		...opts
 	};
@@ -152,15 +122,6 @@ export function parseExpression(str, opts) {
 		})
 		.replace(/\/{2}/g, function(str, match) {
 			return '◊t';
-		})
-		.replace(/ starts with /g, function(str, match) {
-			return '◊s';
-		})
-		.replace(/ ends with /g, function(str, match) {
-			return '◊e';
-		})
-		.replace(/ matches /g, function(str, match) {
-			return '◊m';
 		})
 		.replace(/ in /g, function(str, match) {
 			return '◊i';
@@ -244,33 +205,6 @@ export function parseExpression(str, opts) {
 						...node,
 						operator: '/' 
 					}]
-				});
-			} else if (node.operator === '◊s') {
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'Identifier',
-						name: opts.startsWithFunction
-					},
-					arguments: [node.left, node.right]
-				});
-			} else if (node.operator === '◊e') {
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'Identifier',
-						name: opts.endsWithFunction
-					},
-					arguments: [node.left, node.right ]
-				});
-			} else if (node.operator === '◊m') {
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'Identifier',
-						name: opts.matchesFunction
-					},
-					arguments: [node.left, node.right ]
 				});
 			} else if (node.operator === '◊i') {
 				replacements.set(node, {

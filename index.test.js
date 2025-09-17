@@ -9,27 +9,6 @@ test('operator: in', t => {
 	);
 });
 
-test('operator: matches', t => {
-	assert.equal(
-		parseExpression('str matches /hello world/'),
-		'!!"".match.call(this.str, /hello world/)'
-	);
-});
-
-test('operator: starts with', t => {
-	assert.equal(
-		parseExpression('str starts with "hello"'),
-		'"".startsWith.call(this.str, "hello")'
-	);
-});
-
-test('operator: ends with', t => {
-	assert.equal(
-		parseExpression('str ends with "hello"'),
-		'"".endsWith.call(this.str, "hello")'
-	);
-});
-
 test('operator: range', t => {
 	assert.equal(parseExpression('1..5'), 'this.__filters__.range(1, 5)');
 	assert.equal(parseExpression('1..a'), 'this.__filters__.range(1, this.a)');
@@ -83,6 +62,12 @@ test('string context', () => {
 		parseExpression("posts[html`Therefore..I dunno ${post|inverse}`] | length"),
 		"this.__filters__.length(this.posts[this.html`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
 	);
+
+	// TODO
+	// assert.equal(
+	// 	parseExpression("'you and me' |> length"),
+	// 	"'you and me'"
+	// );
 });
 
 test('simple expressions', t => {
