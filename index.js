@@ -267,10 +267,10 @@ export function parseExpression(str, opts) {
 
 	opts = {
 		async: false,
-		rangeFunction: 'this.__filters__.range',
+		rangeFunction: 'this[Symbol.for("sontag/filters")].range',
 		identifierScope: 'this',
 		truncFunction: 'Math.trunc',
-		filterScope: 'this.__filters__',
+		filterScope: 'this[Symbol.for("sontag/filters")]',
 		...opts
 	};
 

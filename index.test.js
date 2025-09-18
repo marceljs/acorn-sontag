@@ -10,12 +10,12 @@ test('operator: in', t => {
 });
 
 test('operator: range', t => {
-	assert.equal(parseExpression('1..5'), 'this.__filters__.range(1, 5)');
-	assert.equal(parseExpression('1..a'), 'this.__filters__.range(1, this.a)');
-	assert.equal(parseExpression('"a".."z"'), 'this.__filters__.range("a", "z")');
+	assert.equal(parseExpression('1..5'), 'this[Symbol.for("sontag/filters")].range(1, 5)');
+	assert.equal(parseExpression('1..a'), 'this[Symbol.for("sontag/filters")].range(1, this.a)');
+	assert.equal(parseExpression('"a".."z"'), 'this[Symbol.for("sontag/filters")].range("a", "z")');
 	assert.equal(
 		parseExpression('"a".."z" | each(uppercase)'), 
-		'this.__filters__.each(this.uppercase, this.__filters__.range("a", "z"))'
+		'this[Symbol.for("sontag/filters")].each(this.uppercase, this[Symbol.for("sontag/filters")].range("a", "z"))'
 	);
 });
 
@@ -26,19 +26,19 @@ test('operator: truncate', t => {
 test('operator: filter', t => {
 	assert.equal(
 		parseExpression('posts[posts.length - 1] | escape'), 
-		'this.__filters__.escape(this.posts[this.posts.length - 1])'
+		'this[Symbol.for("sontag/filters")].escape(this.posts[this.posts.length - 1])'
 	);
 });
 
 test('operator: filter (async)', t => {
 	assert.equal(
 		parseExpression('posts[posts.length - 1] | escape', { async: true }), 
-		'await this.__filters__.escape(this.posts[this.posts.length - 1])'
+		'await this[Symbol.for("sontag/filters")].escape(this.posts[this.posts.length - 1])'
 	);
 
 	assert.equal(
 		parseExpression('posts | batch(3) | tostring', { async: true }), 
-		'await this.__filters__.tostring(await this.__filters__.batch(3, this.posts))'
+		'await this[Symbol.for("sontag/filters")].tostring(await this[Symbol.for("sontag/filters")].batch(3, this.posts))'
 	);
 });
 
@@ -55,17 +55,17 @@ test('literal context', () => {
 
 	assert.equal(
 		parseExpression("posts[`Therefore..I dunno ${post|inverse}`] | length"),
-		"this.__filters__.length(this.posts[`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
+		'this[Symbol.for("sontag/filters")].length(this.posts[`Therefore..I dunno ${this[Symbol.for("sontag/filters")].inverse(this.post)}`])'
 	);
 
 	assert.equal(
 		parseExpression("posts[html`Therefore..I dunno ${post|inverse}`] | length"),
-		"this.__filters__.length(this.posts[this.html`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
+		'this[Symbol.for("sontag/filters")].length(this.posts[this.html`Therefore..I dunno ${this[Symbol.for("sontag/filters")].inverse(this.post)}`])'
 	);
 
 	assert.equal(
 		parseExpression("'you and me' | length"),
-		"this.__filters__.length('you and me')"
+		`this[Symbol.for("sontag/filters")].length('you and me')`
 	);
 
 	assert.equal(
@@ -107,7 +107,7 @@ test('operators', () => {
 
 	assert.equal(
 		parseExpression('1..10'),
-		'this.__filters__.range(1, 10)'
+		'this[Symbol.for("sontag/filters")].range(1, 10)'
 	);
 
 	assert.equal(
@@ -117,12 +117,12 @@ test('operators', () => {
 
 	assert.equal(
 		parseExpression('featured and not (posts | length)'),
-		'this.featured && !this.__filters__.length(this.posts)'
+		'this.featured && !this[Symbol.for("sontag/filters")].length(this.posts)'
 	);
 
 	assert.equal(
 		parseExpression('featured and not posts | length'),
-		'this.__filters__.length(this.featured && !this.posts)'
+		'this[Symbol.for("sontag/filters")].length(this.featured && !this.posts)'
 	);
 
 	assert.equal(
