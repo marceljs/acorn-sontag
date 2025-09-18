@@ -114,6 +114,31 @@ test('operators', () => {
 		parseExpression('["post-"~ post.type, "po~st"]'),
 		'["post-" + this.post.type, "po~st"]'
 	);
+
+	assert.equal(
+		parseExpression('featured and not (posts | length)'),
+		'this.featured && !this.__filters__.length(this.posts)'
+	);
+
+	assert.equal(
+		parseExpression('featured and not posts | length'),
+		'this.__filters__.length(this.featured && !this.posts)'
+	);
+
+	assert.equal(
+		parseExpression('posts[a // 100]'),
+		'this.posts[Math.trunc(this.a / 100)]'
+	);
+
+	assert.equal(
+		parseExpression('post in posts'),
+		'this.posts.includes(this.post)'
+	);
+
+	assert.equal(
+		parseExpression('post not in posts'),
+		'!this.posts.includes(this.post)'
+	);
 });
 
 test('simple expressions', t => {

@@ -61,7 +61,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{
-		match: '//',
+		match: /(?<!\/)\/{2}(?!\/)/g,
 		original: '//',
 		token: binop(10),
 		replacement: (node, opts) => {
@@ -79,8 +79,33 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{
-		match: ' in ',
-		original: ' in ',
+		match: /\bnot in\b/g,
+		original: 'not in',
+		token: binop(8.4),
+		replacement: (node, opts) => {
+			return {
+				type: 'UnaryExpression',
+				operator: '!',
+				prefix: true,
+				argument: {
+				type: 'CallExpression',
+					callee: {
+						type: 'MemberExpression',
+						object: node.right,
+						property: { 
+							type: 'Identifier', 
+							name: 'includes' 
+						},
+						computed: false
+					},
+					arguments: [node.left]
+				}
+			};
+		}
+	},
+	{
+		match: /\bin\b/g,
+		original: 'in',
 		token: binop(8.4),
 		replacement: (node, opts) => {
 			return {
@@ -101,45 +126,8 @@ const SONTAG_SYNTAX = [
 
 	// Operators
 	{ 
-		match: ' and ', 
-		original: ' and ',
-		token: binop(2),
-		replacement: (node, opts) => {
-			node.operator = '&&';
-			return node;
-		}
-	},
-	{ 
-		match: ' or ', 
-		original: ' or ',
-		token: binop(1),
-		replacement: (node, opts) => {
-			node.operator = '||';
-			return node;
-		}
-	},
-	// { 
-	// 	match: ' not ', 
-	// 	original: ' not ',
-	// 	token: {
-	// 		beforeExpr: true, 
-	// 		prefix: true, 
-	// 		startsExpr: true
-	// 	}
-	// },
-
-	{ 
-		match: ' b-or ', 
-		original: ' b-or ',
-		token: binop(3),
-		replacement: (node, opts) => {
-			node.operator = '|';
-			return node;
-		}
-	},
-	{ 
-		match: ' b-and ', 
-		original: ' b-and ',
+		match: /\bb-and\b/g, 
+		original: 'b-and',
 		token: binop(5),
 		replacement: (node, opts) => {
 			node.operator = '&';
@@ -147,8 +135,8 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: ' b-xor ', 
-		original: ' b-xor ',
+		match: /\bb-xor\b/g, 
+		original: 'b-xor',
 		token: binop(4),
 		replacement: (node, opts) => {
 			node.operator = '^';
@@ -156,7 +144,47 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: '~', 
+		match: /\bb-or\b/g, 
+		original: 'b-or',
+		token: binop(3),
+		replacement: (node, opts) => {
+			node.operator = '|';
+			return node;
+		}
+	},
+	{ 
+		match: /\band\b/g, 
+		original: 'and',
+		token: binop(2),
+		replacement: (node, opts) => {
+			node.operator = '&&';
+			return node;
+		}
+	},
+	{ 
+		match: /\bor\b/g, 
+		original: 'or',
+		token: binop(1),
+		replacement: (node, opts) => {
+			node.operator = '||';
+			return node;
+		}
+	},
+	{ 
+		match: /\bnot\b/g, 
+		original: 'not',
+		token: {
+			beforeExpr: true, 
+			prefix: true, 
+			startsExpr: true
+		},
+		replacement: (node, opts) => {
+			node.operator = '!';
+			return node;
+		}
+	},
+	{ 
+		match: /(?<!~)~(?!~)/g, 
 		original: '~',
 		token: binop(9),
 		replacement: (node, opts) => {
@@ -165,10 +193,10 @@ const SONTAG_SYNTAX = [
 		}
 	}
 ].map((it, idx) => {
-	// TODO we can’t have more than 36 items in this array.
 	return {
 		...it,
-		marker: idx.toString(36)
+		// Use non-characters for sentinel markers
+		marker: String.fromCodePoint(idx + 0xfdd0)
 	};
 });
 
@@ -226,10 +254,12 @@ export function parseExpression(str, opts) {
 	str = Array.from(str.replace(/\f|\r\n?/g, '\n')).map(char => {
 		const c = char.codePointAt(0);
 		/* 
-			Replace null, surrogate code points, and the non-character sentinel 
+			Replace null, surrogate code points, and the non-character sentinels 
 			used for Sontag with the `U+FFFD REPLACEMENT CHARACTER`.
+
+			See: https://corp.unicode.org/~asmus/proposed_faq/private_use.html
 		*/
-		if (!c || (c >= 0xd800 && c <= 0xdfff) || c === SENTINEL_CODE) {
+		if (!c || (c >= 0xd800 && c <= 0xdfff) || c === SENTINEL_CODE || (c >= 0xfdd0 && c <= 0xfdef)) {
 			return REPLACEMENT_CHAR;
 		}
 		return char;
@@ -257,6 +287,8 @@ export function parseExpression(str, opts) {
 	let ast = parser.parseExpression();
 
 	const replacements = new Map();
+
+	console.log(str);
 
 	ancestor(ast, {
 
@@ -292,15 +324,18 @@ export function parseExpression(str, opts) {
 			}
 		},
 
-		BinaryExpression(node) {
-			const it = SONTAG_SYNTAX.find(it => 
-				node.operator === SENTINEL_CHAR + it.marker && it.replacement
-			);
-			if (it) {
-				replacements.set(node, it.replacement(node, opts));
-			}
-		}
+		BinaryExpression: replaceNode,
+		UnaryExpression: replaceNode
 	});
+
+	function replaceNode(node) {
+		const it = SONTAG_SYNTAX.find(it => 
+			node.operator === SENTINEL_CHAR + it.marker && it.replacement
+		);
+		if (it) {
+			replacements.set(node, it.replacement(node, opts));
+		}
+	};
 
 	const result = generate(
 		replace(ast, {
