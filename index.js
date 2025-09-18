@@ -288,8 +288,6 @@ export function parseExpression(str, opts) {
 
 	const replacements = new Map();
 
-	console.log(str);
-
 	ancestor(ast, {
 
 		Identifier(node, ancestors) {
