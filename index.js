@@ -215,7 +215,7 @@ class SontagParser extends Parser {
 			Allow most reserved keywords as identifiers,
 			but keep some of them (literals, etc).
 		*/
-		this.keywords = /^(?:void|this|null|new|true|false)$/;
+		this.keywords = /^(?:void|this|null|new|true|false|function)$/;
 
 		SONTAG_SYNTAX.forEach(it => {
 			if (it.token) {
