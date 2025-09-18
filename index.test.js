@@ -104,6 +104,16 @@ test('operators', () => {
 		parseExpression('a ?? b'),
 		'this.a ?? this.b'
 	);
+
+	assert.equal(
+		parseExpression('1..10'),
+		'this.__filters__.range(1, 10)'
+	);
+
+	assert.equal(
+		parseExpression('["post-"~ post.type, "po~st"]'),
+		'["post-" + this.post.type, "po~st"]'
+	);
 });
 
 test('simple expressions', t => {

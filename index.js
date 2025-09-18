@@ -16,11 +16,7 @@ function binop(prec) {
 
 const SONTAG_SYNTAX = [
 	{
-		match: /[^\|](\|)(?!\|)/g,
-		replaceFn: function(str, match) {
-			return str[0] + SENTINEL_CHAR + 'f';
-		},
-		marker: 'f',
+		match: /(?<!\|)(\|)(?!\|)/g,
 		original: '|',
 		token: binop(0.2),
 		replacement: (node, opts) => {
@@ -49,11 +45,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{
-		match: /[^.]\.{2}(?!\.)/g,
-		replaceFn: function(str, match) {
-			return str[0] + SENTINEL_CHAR + 'r';
-		},
-		marker: 'r',
+		match: /(?<!\.)\.{2}(?!\.)/g,
 		original: '..',
 		token: binop(8.6),
 		replacement: (node, opts) => {
@@ -69,8 +61,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{
-		match: /\/{2}/g,
-		marker: 't',
+		match: '//',
 		original: '//',
 		token: binop(10),
 		replacement: (node, opts) => {
@@ -88,8 +79,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{
-		match: / in /g,
-		marker: 'i',
+		match: ' in ',
 		original: ' in ',
 		token: binop(8.4),
 		replacement: (node, opts) => {
@@ -111,8 +101,7 @@ const SONTAG_SYNTAX = [
 
 	// Operators
 	{ 
-		match: / and /g, 
-		marker: 'a', 
+		match: ' and ', 
 		original: ' and ',
 		token: binop(2),
 		replacement: (node, opts) => {
@@ -121,8 +110,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: / or /g, 
-		marker: 'o', 
+		match: ' or ', 
 		original: ' or ',
 		token: binop(1),
 		replacement: (node, opts) => {
@@ -131,8 +119,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	// { 
-	// 	match: / not /g, 
-	// 	marker: 'n', 
+	// 	match: ' not ', 
 	// 	original: ' not ',
 	// 	token: {
 	// 		beforeExpr: true, 
@@ -142,8 +129,7 @@ const SONTAG_SYNTAX = [
 	// },
 
 	{ 
-		match: / b-or /g, 
-		marker: 's', 
+		match: ' b-or ', 
 		original: ' b-or ',
 		token: binop(3),
 		replacement: (node, opts) => {
@@ -152,8 +138,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: / b-and /g, 
-		marker: 'z', 
+		match: ' b-and ', 
 		original: ' b-and ',
 		token: binop(5),
 		replacement: (node, opts) => {
@@ -162,8 +147,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: / b-xor /g, 
-		marker: 'x', 
+		match: ' b-xor ', 
 		original: ' b-xor ',
 		token: binop(4),
 		replacement: (node, opts) => {
@@ -172,8 +156,7 @@ const SONTAG_SYNTAX = [
 		}
 	},
 	{ 
-		match: /~/g, 
-		marker: 'p', 
+		match: '~', 
 		original: '~',
 		token: binop(9),
 		replacement: (node, opts) => {
@@ -181,11 +164,17 @@ const SONTAG_SYNTAX = [
 			return node;
 		}
 	}
-];
+].map((it, idx) => {
+	// TODO we can’t have more than 36 items in this array.
+	return {
+		...it,
+		marker: idx.toString(36)
+	};
+});
 
 function putback(str) {
 	SONTAG_SYNTAX.forEach(it => {
-		str = str.replace(SENTINEL_CHAR + it.marker, it.original);
+		str = str.replaceAll(SENTINEL_CHAR + it.marker, it.original);
 	});
 	return str;
 }
@@ -256,7 +245,7 @@ export function parseExpression(str, opts) {
 	};
 
 	SONTAG_SYNTAX.forEach(it => {
-		str = str.replace(it.match, it.replaceFn ?? (SENTINEL_CHAR + it.marker));
+		str = str.replaceAll(it.match, SENTINEL_CHAR + it.marker);
 	});
 
 	let parser = new SontagParser({
