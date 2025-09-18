@@ -7,6 +7,20 @@ const REPLACEMENT_CHAR = '\uFFFD';
 const SENTINEL_CODE = 0xfffe;
 const SENTINEL_CHAR = '\uFFFE';
 
+const DEFAULT_OPTS = {
+	async: false,
+	rangeFunction: 'this[Symbol.for("sontag/filters")].range',
+	identifierScope: 'this',
+	truncFunction: 'Math.trunc',
+	filterScope: 'this[Symbol.for("sontag/filters")]'
+};
+
+const PARSER_OPTS = {
+	allowReserved: true,
+	ecmaVersion: '2022',
+	allowAwaitOutsideFunction: true
+};
+
 function binop(prec) {
 	return {
 		beforeExpr: true,
@@ -244,9 +258,7 @@ function wrapAwait(node) {
 	};
 }
 
-export function parseExpression(str, opts) {
-	if (!str) return str;
-
+function prepareInput(str = '') {
 	/*
 		We split the string into an Array based on Unicode codepoints,
 		rather than iterating on the string itself. 
@@ -265,29 +277,23 @@ export function parseExpression(str, opts) {
 		return char;
 	}).join('');
 
-	opts = {
-		async: false,
-		rangeFunction: 'this[Symbol.for("sontag/filters")].range',
-		identifierScope: 'this',
-		truncFunction: 'Math.trunc',
-		filterScope: 'this[Symbol.for("sontag/filters")]',
-		...opts
-	};
-
 	SONTAG_SYNTAX.forEach(it => {
 		str = str.replaceAll(it.match, SENTINEL_CHAR + it.marker);
 	});
+	return str;
+}
 
-	let parser = new SontagParser({
-		allowReserved: true,
-		ecmaVersion: '2022',
-		allowAwaitOutsideFunction: true
-	}, str);
-	parser.nextToken();
-	
-	let ast = parser.parseExpression();
-
+function prepareResult(ast, opts) {
 	const replacements = new Map();
+
+	function replaceNode(node) {
+		const it = SONTAG_SYNTAX.find(it => 
+			node.operator === SENTINEL_CHAR + it.marker && it.replacement
+		);
+		if (it) {
+			replacements.set(node, it.replacement(node, opts));
+		}
+	};
 
 	ancestor(ast, {
 
@@ -327,33 +333,84 @@ export function parseExpression(str, opts) {
 		UnaryExpression: replaceNode
 	});
 
-	function replaceNode(node) {
-		const it = SONTAG_SYNTAX.find(it => 
-			node.operator === SENTINEL_CHAR + it.marker && it.replacement
-		);
-		if (it) {
-			replacements.set(node, it.replacement(node, opts));
+	return replace(ast, {
+		enter(node) {
+			if (replacements.has(node)) {
+				return replacements.get(node);
+			} else if (node.__replace_name__) {
+				return {
+					...node,
+					name: node.__is_filter__ ? 
+						`${opts.filterScope}.${node.name}` :
+						`${opts.identifierScope}.${node.name}`
+				};
+			}
 		}
+	});
+}
+
+export function parseExpression(str, opts = {}) {
+
+	str = prepareInput(str);
+
+	opts = {
+		...DEFAULT_OPTS,
+		...opts
 	};
 
-	const result = generate(
-		replace(ast, {
-			enter(node) {
-				if (replacements.has(node)) {
-					return replacements.get(node);
-				} else if (node.__replace_name__) {
-					return {
-						...node,
-						name: node.__is_filter__ ? 
-							`${opts.filterScope}.${node.name}` :
-							`${opts.identifierScope}.${node.name}`
-					};
-				}
-			}
-		})
+	let parser = new SontagParser(PARSER_OPTS, str);
+	parser.nextToken();
+	
+	let ast = prepareResult(
+		parser.parseExpression(),
+		opts
 	);
+
+	const result = generate(ast);
 	if (result.indexOf(SENTINEL_CHAR) > -1) {
 		throw new Error('Unexpected sentinel character, please report an issue');
 	}
 	return result;
+}
+
+export function parseFunctionSignature(str, opts = {}) {
+
+	str = prepareInput(str);
+
+	opts = {
+		...DEFAULT_OPTS,
+		...opts
+	};
+
+	let parser = new SontagParser(
+		PARSER_OPTS, 
+		`function ${str} {}`
+	);
+	parser.nextToken();
+	
+	let ast = prepareResult(
+		parser.parseExpression(),
+		opts
+	);
+
+	if (generate(ast).indexOf(SENTINEL_CHAR) > -1) {
+		throw new Error('Unexpected sentinel character, please report an issue');
+	}
+	
+	return {
+		name: ast.id.name,
+		params: ast.params.map(param => {
+			if (param.type === 'Identifier') {
+				return {
+					name: param.name
+				}
+			}
+			if (param.type === 'AssignmentPattern') {
+				return {
+					name: generate(param.left),
+					value: generate(param.right)
+				}
+			}
+		})
+	};
 }

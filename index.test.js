@@ -1,4 +1,4 @@
-import { parseExpression } from './index.js';
+import { parseExpression, parseFunctionSignature } from './index.js';
 import assert from 'node:assert';
 import test from 'node:test';
 
@@ -186,5 +186,27 @@ test('simple expressions', t => {
 	assert.equal(
 		parseExpression('await promise', { async: true }),
 		'await this.promise'
+	);
+});
+
+test('parseFunctionSignature', () => {
+	assert.deepStrictEqual(
+		parseFunctionSignature('hello(who = posts | length, suffix, prefix = 10)'),
+		{
+			name: 'hello',
+			params: [
+				{
+					name: 'who',
+					value: 'this[Symbol.for("sontag/filters")].length(this.posts)'
+				},
+				{
+					name: 'suffix'
+				},
+				{
+					name: 'prefix',
+					value: '10'
+				}
+			]
+		}
 	);
 });
