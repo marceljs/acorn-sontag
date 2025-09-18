@@ -215,7 +215,7 @@ class SontagParser extends Parser {
 			Allow most reserved keywords as identifiers,
 			but keep some of them (literals, etc).
 		*/
-		this.keywords = /^(?:void|this|null|true|false)$/;
+		this.keywords = /^(?:void|this|null|new|true|false)$/;
 
 		SONTAG_SYNTAX.forEach(it => {
 			if (it.token) {
@@ -280,7 +280,8 @@ export function parseExpression(str, opts) {
 
 	let parser = new SontagParser({
 		allowReserved: true,
-		ecmaVersion: 2020
+		ecmaVersion: '2022',
+		allowAwaitOutsideFunction: true
 	}, str);
 	parser.nextToken();
 	

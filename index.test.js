@@ -177,4 +177,14 @@ test('simple expressions', t => {
 		parseExpression('this', { async: true }),
 		'this'
 	);
+
+	assert.equal(
+		parseExpression('new Class()', { async: true }),
+		'new this.Class()'
+	);
+
+	assert.equal(
+		parseExpression('await promise', { async: true }),
+		'await this.promise'
+	);
 });
