@@ -4,8 +4,7 @@
   "description": "Acorn plugin to parse Sontag expressions",
   "type": "module",
   "main": "index.js",
-  "repository": "git@github.com:marceljs/acorn-sontag.git",
-  "author": "Dan Burzo <dan@danburzo.ro>",
+  "repository": "git@github.com:sontag-js/acorn-sontag.git",
   "license": "MIT",
   "scripts": {
     "test": "node --test index.test.js"

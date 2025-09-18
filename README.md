@@ -1,6 +1,6 @@
 # acorn-sontag
 
-An Acorn-based parser for [Sontag](https://github.com/marceljs/sontag) expressions.
+An Acorn-based parser for [Sontag](https://github.com/sontag-js/sontag/) expressions.
 
 ## Installation
 
