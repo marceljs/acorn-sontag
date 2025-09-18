@@ -3,40 +3,192 @@ import { ancestor } from 'acorn-walk';
 import { replace } from 'estraverse';
 import { generate } from 'astring';
 
-const codes = {
-	lozenge: 0x25CA, // ◊
-	f: 0x66,
-	i: 0x69,
-	r: 0x72,
-	t: 0x74
+const REPLACEMENT_CHAR = '\uFFFD';
+const SENTINEL_CODE = 0xfffe;
+const SENTINEL_CHAR = '\uFFFE';
+
+function binop(prec) {
+	return {
+		beforeExpr: true,
+		binop: prec
+	};
 }
 
-const putback = {
-	'◊f': "|",
-	'◊i': " in ",
-	'◊r': "..",
-	'◊t': "//"
-};
+const SONTAG_SYNTAX = [
+	{
+		match: /[^\|](\|)(?!\|)/g,
+		replaceFn: function(str, match) {
+			return str[0] + SENTINEL_CHAR + 'f';
+		},
+		marker: 'f',
+		original: '|',
+		token: binop(0.2),
+		replacement: (node, opts) => {
+			let { left, right } = node;
 
-const operators = {
-	' and ': '&&',
-	' or ': '||',
-	' not ': '!',
-	' b-or ': '|',
-	' b-and ': '&',
-	' b-xor ': '^',
-	'~': '+' 
-};
+			if (right.type === 'CallExpression') {
+				// We have a function on the right-hand side,
+				// add left-hand side to the list of arguments
+				right.callee.__is_filter__ = true;
+				let replacement = {
+					...right,
+					arguments: right.arguments.concat(left)
+				};
+				return opts.async ? wrapAwait(replacement) : replacement;
+			} else if (right.type === 'Identifier') {
+				// We have an identifier on the right-hand side,
+				// make it a function that calls the left-hand side
+				right.__is_filter__ = true;
+				let replacement = {
+					type: 'CallExpression',
+					callee: right,
+					arguments: [ left ]
+				};
+				return opts.async ? wrapAwait(replacement) : replacement;
+			}
+		}
+	},
+	{
+		match: /[^.]\.{2}(?!\.)/g,
+		replaceFn: function(str, match) {
+			return str[0] + SENTINEL_CHAR + 'r';
+		},
+		marker: 'r',
+		original: '..',
+		token: binop(8.6),
+		replacement: (node, opts) => {
+			let { left, right } = node;
+			return {
+				type: 'CallExpression',
+				callee: {
+					type: 'Identifier',
+					name: opts.rangeFunction
+				},
+				arguments: [ left, right ]
+			};
+		}
+	},
+	{
+		match: /\/{2}/g,
+		marker: 't',
+		original: '//',
+		token: binop(10),
+		replacement: (node, opts) => {
+			return {
+				type: 'CallExpression',
+				callee: {
+					type: 'Identifier',
+					name: opts.truncFunction
+				},
+				arguments: [{
+					...node,
+					operator: '/' 
+				}]
+			};
+		}
+	},
+	{
+		match: / in /g,
+		marker: 'i',
+		original: ' in ',
+		token: binop(8.4),
+		replacement: (node, opts) => {
+			return {
+				type: 'CallExpression',
+				callee: {
+					type: 'MemberExpression',
+					object: node.right,
+					property: { 
+						type: 'Identifier', 
+						name: 'includes' 
+					},
+					computed: false
+				},
+				arguments: [node.left]
+			};
+		}
+	},
 
-const unsupported_operators = [
-	'\\?\\:', // ?:
-	'\\?\\?', // ?? 
-	' is '
+	// Operators
+	{ 
+		match: / and /g, 
+		marker: 'a', 
+		original: ' and ',
+		token: binop(2),
+		replacement: (node, opts) => {
+			node.operator = '&&';
+			return node;
+		}
+	},
+	{ 
+		match: / or /g, 
+		marker: 'o', 
+		original: ' or ',
+		token: binop(1),
+		replacement: (node, opts) => {
+			node.operator = '||';
+			return node;
+		}
+	},
+	// { 
+	// 	match: / not /g, 
+	// 	marker: 'n', 
+	// 	original: ' not ',
+	// 	token: {
+	// 		beforeExpr: true, 
+	// 		prefix: true, 
+	// 		startsExpr: true
+	// 	}
+	// },
+
+	{ 
+		match: / b-or /g, 
+		marker: 's', 
+		original: ' b-or ',
+		token: binop(3),
+		replacement: (node, opts) => {
+			node.operator = '|';
+			return node;
+		}
+	},
+	{ 
+		match: / b-and /g, 
+		marker: 'z', 
+		original: ' b-and ',
+		token: binop(5),
+		replacement: (node, opts) => {
+			node.operator = '&';
+			return node;
+		}
+	},
+	{ 
+		match: / b-xor /g, 
+		marker: 'x', 
+		original: ' b-xor ',
+		token: binop(4),
+		replacement: (node, opts) => {
+			node.operator = '^';
+			return node;
+		}
+	},
+	{ 
+		match: /~/g, 
+		marker: 'p', 
+		original: '~',
+		token: binop(9),
+		replacement: (node, opts) => {
+			node.operator = '+';
+			return node;
+		}
+	}
 ];
 
-const operators_re = new RegExp(Object.keys(operators).join('|'), 'g');
-const unsupported_re = new RegExp(unsupported_operators.join('|'), 'g');
-const putback_re = new RegExp(Object.keys(putback).join('|'), 'g');
+function putback(str) {
+	SONTAG_SYNTAX.forEach(it => {
+		str = str.replace(SENTINEL_CHAR + it.marker, it.original);
+	});
+	return str;
+}
 
 class SontagParser extends Parser {
 	constructor(...args) {
@@ -48,42 +200,23 @@ class SontagParser extends Parser {
 		*/
 		this.keywords = /^(?:void|this|null|true|false)$/;
 
-		tokTypes.sontag_filter = new TokenType(`◊f`, {
-			beforeExpr: true, 
-			binop: 0.2
-		});
-
-		tokTypes.sontag_in = new TokenType(`◊i`, {
-			beforeExpr: true, 
-			binop: 8.4
-		});
-
-		tokTypes.sontag_range = new TokenType(`◊r`, {
-			beforeExpr: true, 
-			binop: 8.6
-		});
-
-		tokTypes.sontag_trunc = new TokenType(`◊t`, {
-			beforeExpr: true, 
-			binop: 10
+		SONTAG_SYNTAX.forEach(it => {
+			if (it.token) {
+				const key = 'sontag_' + it.marker;
+				tokTypes[key] = new TokenType(key, it.token);
+			}
 		});
 	}
 
 	readToken(code) {
-		if (code === codes.lozenge) {
-			let next = this.input.charCodeAt(this.pos + 1);
-			if (next === codes.f) {
-				return this.finishOp(tokTypes.sontag_filter, 2);
-			} else if (next === codes.r) {
-				return this.finishOp(tokTypes.sontag_range, 2);
-			} else if (next === codes.t) {
-				return this.finishOp(tokTypes.sontag_trunc, 2);
-			} else if (next === codes.i) {
-				return this.finishOp(tokTypes.sontag_in, 2);
+		if (code === SENTINEL_CODE) {
+			const next = this.input.charAt(this.pos + 1);
+			const it = SONTAG_SYNTAX.find(it => it.marker === next);
+			if (it) {
+				return this.finishOp(tokTypes['sontag_' + it.marker], 2);
 			}
-		} else {
-			return super.readToken(code);
 		}
+		return super.readToken(code);
 	}
 }
 
@@ -97,6 +230,22 @@ function wrapAwait(node) {
 export function parseExpression(str, opts) {
 	if (!str) return str;
 
+	/*
+		We split the string into an Array based on Unicode codepoints,
+		rather than iterating on the string itself. 
+	 */
+	str = Array.from(str.replace(/\f|\r\n?/g, '\n')).map(char => {
+		const c = char.codePointAt(0);
+		/* 
+			Replace null, surrogate code points, and the non-character sentinel 
+			used for Sontag with the `U+FFFD REPLACEMENT CHARACTER`.
+		*/
+		if (!c || (c >= 0xd800 && c <= 0xdfff) || c === SENTINEL_CODE) {
+			return REPLACEMENT_CHAR;
+		}
+		return char;
+	}).join('');
+
 	opts = {
 		async: false,
 		rangeFunction: 'this.__filters__.range',
@@ -106,29 +255,9 @@ export function parseExpression(str, opts) {
 		...opts
 	};
 
-	// Throw on unsupported operators
-	let bummer = str.match(unsupported_re);
-	if (bummer) {
-		throw new Error(`These operators are not yet supported: ${ bummer.join(', ') }`)
-	}
-
-	// Replace | with filter operator and .. with range operator
-	str = str
-		.replace(/[^\|](\|)(?!\|)/g, function(str, match) {
-			return str[0] + '◊f';
-		})
-		.replace(/[^.]\.{2}(?!\.)/g, function(str, match) {
-			return str[0] + '◊r';
-		})
-		.replace(/\/{2}/g, function(str, match) {
-			return '◊t';
-		})
-		.replace(/ in /g, function(str, match) {
-			return '◊i';
-		});
-
-	// Replace Sontag operators with equivalent ECMAScript operators
-	str = str.replace(operators_re, matched => operators[matched]);
+	SONTAG_SYNTAX.forEach(it => {
+		str = str.replace(it.match, it.replaceFn ?? (SENTINEL_CHAR + it.marker));
+	});
 
 	let parser = new SontagParser({
 		allowReserved: true,
@@ -148,83 +277,43 @@ export function parseExpression(str, opts) {
 
 		TemplateElement(node) {
 			// TODO should we treat the two differently?
-			node.value.raw = node.value.raw.replace(putback_re, matched => putback[matched]);
-			node.value.cooked = node.value.cooked.replace(putback_re, matched => putback[matched]);
+			node.value.raw = putback(node.value.raw);
+			node.value.cooked = putback(node.value.cooked);
 		},
 
 		Literal(node) {
+			// String literals
 			if (typeof node.value === 'string') {
 				// TODO should we treat the two differently?
-				node.value = node.value.replace(putback_re, matched => putback[matched]);
-				node.raw = node.raw.replace(putback_re, matched => putback[matched]);
+				node.value = putback(node.value);
+				node.raw = putback(node.raw);
+				return;
+			}
+
+			// Regular expression literals
+			if (node.regex) {
+				node.regex.pattern = putback(node.regex.pattern);
+				node.raw = putback(node.raw);
+				try {
+					node.value = new RegExp(node.regex.pattern, node.regex.flags);
+				} catch(err) {
+					node.value = null;
+				}
+				return;
 			}
 		},
 
 		BinaryExpression(node) {
-			if (node.operator === '◊f') {
-				let { left, right } = node;
-
-				if (right.type === 'CallExpression') {
-					// We have a function on the right-hand side,
-					// add left-hand side to the list of arguments
-					right.callee.__is_filter__ = true;
-					let replacement = {
-						...right,
-						arguments: right.arguments.concat(left)
-					};
-					replacements.set(node, opts.async ? wrapAwait(replacement) : replacement);
-				} else if (right.type === 'Identifier') {
-					// We have an identifier on the right-hand side,
-					// make it a function that calls the left-hand side
-					right.__is_filter__ = true;
-					let replacement = {
-						type: 'CallExpression',
-						callee: right,
-						arguments: [ left ]
-					};
-					replacements.set(node, opts.async ? wrapAwait(replacement) : replacement);
-				}
-			} else if (node.operator === '◊r') {
-				let { left, right } = node;
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'Identifier',
-						name: opts.rangeFunction
-					},
-					arguments: [ left, right ]
-				});
-			} else if (node.operator === '◊t') {
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'Identifier',
-						name: opts.truncFunction
-					},
-					arguments: [{
-						...node,
-						operator: '/' 
-					}]
-				});
-			} else if (node.operator === '◊i') {
-				replacements.set(node, {
-					type: 'CallExpression',
-					callee: {
-						type: 'MemberExpression',
-						object: node.right,
-						property: { 
-							type: 'Identifier', 
-							name: 'includes' 
-						},
-						computed: false
-					},
-					arguments: [node.left]
-				});
+			const it = SONTAG_SYNTAX.find(it => 
+				node.operator === SENTINEL_CHAR + it.marker && it.replacement
+			);
+			if (it) {
+				replacements.set(node, it.replacement(node, opts));
 			}
 		}
 	});
 
-	return generate(
+	const result = generate(
 		replace(ast, {
 			enter(node) {
 				if (replacements.has(node)) {
@@ -240,4 +329,8 @@ export function parseExpression(str, opts) {
 			}
 		})
 	);
+	if (result.indexOf(SENTINEL_CHAR) > -1) {
+		throw new Error('Unexpected sentinel character, please report an issue');
+	}
+	return result;
 }
