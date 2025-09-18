@@ -42,7 +42,7 @@ test('operator: filter (async)', t => {
 	);
 });
 
-test('string context', () => {
+test('literal context', () => {
 	assert.equal(
 		parseExpression('"posts| escape"'),
 		'"posts| escape"'
@@ -63,11 +63,47 @@ test('string context', () => {
 		"this.__filters__.length(this.posts[this.html`Therefore..I dunno ${this.__filters__.inverse(this.post)}`])"
 	);
 
-	// TODO
-	// assert.equal(
-	// 	parseExpression("'you and me' |> length"),
-	// 	"'you and me'"
-	// );
+	assert.equal(
+		parseExpression("'you and me' | length"),
+		"this.__filters__.length('you and me')"
+	);
+
+	assert.equal(
+		parseExpression("/a|b/g"),
+		"/a|b/g"
+	);
+});
+
+test('operators', () => {
+	assert.equal(
+		parseExpression('a and b'),
+		'this.a && this.b'
+	);
+
+	assert.equal(
+		parseExpression('a or b'),
+		'this.a || this.b'
+	);
+
+	assert.equal(
+		parseExpression('a b-and b'),
+		'this.a & this.b'
+	);
+
+	assert.equal(
+		parseExpression('a b-or b'),
+		'this.a | this.b'
+	);
+
+	assert.equal(
+		parseExpression('a b-xor b'),
+		'this.a ^ this.b'
+	);
+
+	assert.equal(
+		parseExpression('a ?? b'),
+		'this.a ?? this.b'
+	);
 });
 
 test('simple expressions', t => {
