@@ -230,10 +230,12 @@ class SontagParser extends Parser {
 		super(...args);
 		
 		/* 
-			Allow most reserved keywords as identifiers,
-			but keep some of them (literals, etc).
+			Allow `with` as identifier, needed for Sontag syntax.
 		*/
-		this.keywords = /^(?:void|this|null|new|true|false|import|export|function)$/;
+		this.keywords = new RegExp(
+			this.keywords.source.replace(/\bwith\b/, ''), 
+			this.keywords.flags
+		);
 
 		SONTAG_SYNTAX.forEach(it => {
 			if (it.token) {
