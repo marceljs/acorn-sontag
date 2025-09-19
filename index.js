@@ -18,7 +18,9 @@ const DEFAULT_OPTS = {
 const PARSER_OPTS = {
 	allowReserved: true,
 	ecmaVersion: '2022',
-	allowAwaitOutsideFunction: true
+	allowAwaitOutsideFunction: true,
+	allowSuperOutsideMethod: true,
+	locations: true
 };
 
 function binop(prec) {
@@ -347,6 +349,42 @@ function prepareResult(ast, opts) {
 			}
 		}
 	});
+}
+
+export function parseExpressions(str, opts = {}) {
+
+	str = prepareInput(str);
+
+	opts = {
+		...DEFAULT_OPTS,
+		...opts
+	};
+
+	/*
+		Append one space character at the end of the string 
+		to make sure Acorn parses the last expression as well.
+		(Haven’t investigated what’s going on.)
+	*/
+	str += ' ';
+	let parser = new SontagParser(PARSER_OPTS, str);
+	parser.nextToken();
+
+	const res = [];
+
+	while (parser.pos < str.length) {
+		let ast = prepareResult(
+			parser.parseExpression(),
+			opts
+		);
+
+		const result = generate(ast);
+		if (result.indexOf(SENTINEL_CHAR) > -1) {
+			throw new Error('Unexpected sentinel character, please report an issue');
+		}
+		res.push(result);
+	}
+
+	return res;
 }
 
 export function parseExpression(str, opts = {}) {

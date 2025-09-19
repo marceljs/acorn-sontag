@@ -1,4 +1,4 @@
-import { parseExpression, parseFunctionSignature } from './index.js';
+import { parseExpression, parseExpressions, parseFunctionSignature } from './index.js';
 import assert from 'node:assert';
 import test from 'node:test';
 
@@ -209,4 +209,17 @@ test('parseFunctionSignature', () => {
 			]
 		}
 	);
+});
+
+test('parseExpressions', () => {
+	const expr = '["post" ~ type ~ ".son", "post.son"] | reverse with {x:{y: "z"}} only';
+	assert.deepStrictEqual(
+		parseExpressions(expr),
+		[
+			'this[Symbol.for("sontag/filters")].reverse(["post" + this.type + ".son", "post.son"])', 
+			'this.with', 
+			'{\n  x: {\n    y: "z"\n  }\n}', 
+			'this.only' 
+		]
+	)
 });
