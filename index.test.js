@@ -1,4 +1,4 @@
-import { parseExpression, parseExpressions, parseFunctionSignature } from './index.js';
+import { parseExpression, parseImport, parseExpressions, parseFunctionSignature } from './index.js';
 import assert from 'node:assert';
 import test from 'node:test';
 
@@ -222,4 +222,37 @@ test('parseExpressions', () => {
 			'this.only' 
 		]
 	)
+});
+
+test('parseImport', () => {
+	assert.deepStrictEqual(
+		parseImport('import { x as y, z } from "my/layout"'),
+		{
+			source: 'my/layout',
+			specifiers: [
+				{ name: 'x', local: 'y' },
+				{ name: 'z', local: 'z' }
+			]
+		}
+	);
+
+	assert.deepStrictEqual(
+		parseImport('import * as layout from "my/layout"'),
+		{
+			source: 'my/layout',
+			specifiers: [
+				{ name: '*', local: 'layout' }
+			]
+		}
+	);
+
+		assert.deepStrictEqual(
+		parseImport('import layout from "my/layout"'),
+		{
+			source: 'my/layout',
+			specifiers: [
+				{ name: '*', local: 'layout' }
+			]
+		}
+	);
 });

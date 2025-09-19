@@ -20,7 +20,9 @@ const PARSER_OPTS = {
 	ecmaVersion: '2022',
 	allowAwaitOutsideFunction: true,
 	allowSuperOutsideMethod: true,
-	locations: true
+	allowImportExportEverywhere: true,
+	locations: true,
+	sourceType: 'module'
 };
 
 function binop(prec) {
@@ -231,7 +233,7 @@ class SontagParser extends Parser {
 			Allow most reserved keywords as identifiers,
 			but keep some of them (literals, etc).
 		*/
-		this.keywords = /^(?:void|this|null|new|true|false|function)$/;
+		this.keywords = /^(?:void|this|null|new|true|false|import|export|function)$/;
 
 		SONTAG_SYNTAX.forEach(it => {
 			if (it.token) {
@@ -409,6 +411,37 @@ export function parseExpression(str, opts = {}) {
 		throw new Error('Unexpected sentinel character, please report an issue');
 	}
 	return result;
+}
+
+export function parseImport(str, opts = {}) {
+
+	opts = {
+		...DEFAULT_OPTS,
+		...opts
+	};
+
+	let parser = new SontagParser(
+		PARSER_OPTS, 
+		str
+	);
+	
+	let ast = prepareResult(
+		parser.parse(),
+		opts
+	);
+
+	let declaration = ast.body[0];
+	
+	return {
+		source: declaration.source.value,
+		specifiers: declaration.specifiers.map(el => {
+			const name = el.type === 'ImportSpecifier' ? el.imported.name : '*';
+			return {
+				name,
+				local: el.local.name
+			};
+		})
+	};
 }
 
 export function parseFunctionSignature(str, opts = {}) {
