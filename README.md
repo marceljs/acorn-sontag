@@ -1,12 +1,8 @@
 # acorn-sontag
 
+> __Deprecated:__ This library has been merged into [`sontag-js/sontag`](https://github.com/sontag-js/sontag/) and will no longer be developed separately. The `acorn-sontag` npm package has also been deprecated.
+
 An Acorn-based parser for [Sontag](https://github.com/sontag-js/sontag/) expressions.
-
-## Installation
-
-```bash
-npm install acorn-sontag
-```
 
 ## Usage
 
